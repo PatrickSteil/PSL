@@ -16,11 +16,11 @@ The algorithm can write its results to a plain-text file using a structured, lin
 The first line starts with the character `V` followed by the total number of vertices in the graph.
 - **Label Lines**: 
 For each vertex, the file contains two lines:
--- _Forward Labels_ (Outgoing): 
+  - _Forward Labels_ (Outgoing): 
 Begins with the letter `o` (short for “outgoing”). 
 Followed by the vertex identifier. 
 Then, a sequence of pairs where each pair represents a hub and its corresponding distance.
--- _Backward Labels_ (Incoming): 
+  - _Backward Labels_ (Incoming): 
 Begins with the letter `i` (short for “incoming”). 
 Followed by the same vertex identifier. 
 Then, similarly, a sequence of hub–distance pairs.
