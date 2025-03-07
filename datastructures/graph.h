@@ -1,9 +1,11 @@
-/*
- * Licensed under MIT License.
- * Author: Patrick Steil
- */
-
 #pragma once
+
+#ifdef __GNUC__
+#define PREFETCH(addr) __builtin_prefetch(addr)
+#else
+#define PREFETCH(addr)
+#endif
+
 #include <algorithm>
 #include <atomic>
 #include <cassert>
@@ -67,6 +69,10 @@ struct Graph {
   void doForAllEdges(FUNC &&function) const {
     for (Vertex v = 0; v < numVertices(); ++v) {
       for (std::size_t i = beginEdge(v); i < endEdge(v); ++i) {
+        if (i + 4 < endEdge(v)) {
+          PREFETCH(&toVertex[i + 4]);
+        }
+
         function(v, toVertex[i]);
       }
     }
@@ -75,6 +81,10 @@ struct Graph {
   template <typename FUNC>
   void relaxAllEdges(const Vertex from, FUNC &&function) const {
     for (std::size_t i = beginEdge(from); i < endEdge(from); ++i) {
+      if (i + 4 < endEdge(from)) {
+        PREFETCH(&toVertex[i + 4]);
+      }
+
       function(from, toVertex[i]);
     }
   }
@@ -406,6 +416,10 @@ struct Graph {
       std::size_t end = endEdge(v);
 
       for (std::size_t i = begin; i < end; ++i) {
+        if (i + 4 < end) {
+          PREFETCH(&toVertex[i + 4]);
+        }
+
         if (!predicate(v, toVertex[i])) {
           newToVertex.push_back(toVertex[i]);
         }

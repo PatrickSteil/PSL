@@ -8,6 +8,7 @@
 #include <unordered_map>
 #include <vector>
 
+#include "../external/status_log.h"
 #include "types.h"
 #include "utils.h"
 
@@ -169,6 +170,7 @@ Distance sub_query(const Label& left,
 
 void saveToFile(const std::array<std::vector<Label>, 2>& labels,
                 const std::string& fileName) {
+  StatusLog log("Save to file");
   std::ofstream outFile(fileName);
 
   if (!outFile.is_open()) {

@@ -1,8 +1,3 @@
-/*
- * Licensed under MIT License.
- * Author: Patrick Steil
- */
-
 #pragma once
 
 #include <cstdint>

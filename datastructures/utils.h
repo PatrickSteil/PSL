@@ -1,11 +1,4 @@
-/*
- * Licensed under MIT License.
- * Author: Patrick Steil
- */
-
 #pragma once
-
-// #include <omp.h>
 
 #include <algorithm>
 #include <atomic>

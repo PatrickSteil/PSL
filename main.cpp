@@ -8,35 +8,38 @@
 #include "external/cmdparser.hpp"
 
 void configure_parser(cli::Parser &parser) {
-  parser.set_required<std::string>("i", "input_graph", "Input graph file.");
+  parser.set_required<std::string>("i", "input_graph",
+                                   "Input graph file (in DIMACS format).");
   parser.set_optional<std::size_t>(
       "t", "number_threads",
       static_cast<std::size_t>(std::thread::hardware_concurrency()),
       "Number of threads to use.");
   parser.set_optional<std::string>("o", "output_file", "",
                                    "Output file to save hub labels into.");
+  parser.set_optional<bool>(
+      "s", "show_stats", false,
+      "Show statistics about the graph, as well as the computed hub labels.");
 };
 
 int main(int argc, char *argv[]) {
-  cli::Parser parser(argc, argv);
+  cli::Parser parser(argc, argv,
+                     "This code implements the PSL Hub Labeling algorithm for "
+                     "directed graphs. It can be run in parallel, or "
+                     "sequentially.\nPatrick Steil (2025)");
   configure_parser(parser);
   parser.run_and_exit_if_error();
 
   const std::string inputFileName = parser.get<std::string>("i");
   const std::size_t numberOfThreads = parser.get<std::size_t>("t");
   const std::string outputFileName = parser.get<std::string>("o");
+  const bool printStats = parser.get<bool>("s");
 
   Graph g;
   g.readDimacs(inputFileName);
 
-  // g.removeEdges([&rank](const Vertex from, const Vertex to) {
-  //   return rank[from] > rank[to];
-  // });
-
   Graph bwdGraph = g.reverseGraph();
 
-  g.showStats();
-  bwdGraph.showStats();
+  if (printStats) g.showStats();
 
   // generate degree based rank
   std::vector<std::size_t> rank(g.numVertices());
@@ -62,7 +65,8 @@ int main(int argc, char *argv[]) {
 
   PSL psl(&g, &bwdGraph, rank, numberOfThreads);
   psl.run();
-  psl.showStats();
+
+  if (printStats) psl.showStats();
 
   if (!outputFileName.empty()) saveToFile(psl.labels, outputFileName);
   // psl.printLabels();
