@@ -9,20 +9,25 @@
 #include <vector>
 
 #include "../external/status_log.h"
+#include "spin_lock.h"
 #include "types.h"
 #include "utils.h"
 
 struct Label {
   std::vector<Vertex> hubs;
   std::vector<Distance> dists;
+  mutable Spinlock lock;
 
   Label() = default;
-  Label(const Label&) = default;
-  Label(Label&&) noexcept = default;
-  Label& operator=(const Label&) = default;
-  Label& operator=(Label&&) noexcept = default;
+  Label(const Label& other) {
+    std::lock_guard<Spinlock> guard(other.lock);
+    hubs = other.hubs;
+    dists = other.dists;
+  }
 
   void clear() {
+    std::lock_guard<Spinlock> guard(lock);
+
     hubs.clear();
     dists.clear();
     hubs.shrink_to_fit();
@@ -30,17 +35,23 @@ struct Label {
   }
 
   [[nodiscard]] Vertex getHub(std::size_t i) const {
+    std::lock_guard<Spinlock> guard(lock);
+
     assert(i < hubs.size());
     return hubs[i];
   }
 
   [[nodiscard]] Distance getDist(std::size_t i) const {
+    std::lock_guard<Spinlock> guard(lock);
+
     assert(i < dists.size());
     return dists[i];
   }
 
   template <typename FUNC>
   void doForAll(FUNC&& apply) const {
+    std::lock_guard<Spinlock> guard(lock);
+
     assert(hubs.size() == dists.size());
     for (std::size_t i = 0; i < hubs.size(); ++i) {
       apply(hubs[i], dists[i]);
@@ -54,6 +65,8 @@ struct Label {
   }
 
   void sort() {
+    std::lock_guard<Spinlock> guard(lock);
+
     assert(hubs.size() == dists.size());
     std::vector<std::size_t> p = sort_permutation(
         hubs, [](Vertex left, Vertex right) { return left < right; });
@@ -63,6 +76,8 @@ struct Label {
   }
 
   void removeDuplicateHubs() {
+    std::lock_guard<Spinlock> guard(lock);
+
     assert(std::is_sorted(hubs.begin(), hubs.end()));
 
     std::size_t newSize = 1;
@@ -81,19 +96,31 @@ struct Label {
   }
 
   void reserve(std::size_t size) {
+    std::lock_guard<Spinlock> guard(lock);
+
     hubs.reserve(size);
     dists.reserve(size);
   }
 
-  std::size_t capacity() const { return hubs.capacity(); }
+  std::size_t capacity() const {
+    std::lock_guard<Spinlock> guard(lock);
+    return hubs.capacity();
+  }
 
-  std::size_t size() const { return hubs.size(); }
+  std::size_t size() const {
+    std::lock_guard<Spinlock> guard(lock);
+    return hubs.size();
+  }
 
   bool contains(Vertex hub) const {
+    std::lock_guard<Spinlock> guard(lock);
+
     return std::find(hubs.begin(), hubs.end(), hub) != hubs.end();
   }
 
   void add(Vertex hub, Distance dist) {
+    std::lock_guard<Spinlock> guard(lock);
+
     assert(hubs.size() == dists.size());
     hubs.emplace_back(hub);
     dists.emplace_back(dist);

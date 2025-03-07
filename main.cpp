@@ -70,6 +70,4 @@ int main(int argc, char *argv[]) {
 
   if (!outputFileName.empty()) saveToFile(psl.labels, outputFileName);
   // psl.printLabels();
-
-  // benchmark_hublabels(psl.labels, 1000);
 }

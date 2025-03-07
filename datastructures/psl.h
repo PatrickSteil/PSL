@@ -42,7 +42,8 @@ struct PSL {
   void run() {
     StatusLog log("Computing Hub-Labels");
     const std::size_t numVertices = graphs[FWD]->numVertices();
-    const std::size_t chunkSize = (numVertices + numThreads - 1) / numThreads;
+    const std::size_t chunkSizeVertices =
+        (numVertices + numThreads - 1) / numThreads;
 
     std::vector<std::thread> workers;
 
@@ -51,8 +52,8 @@ struct PSL {
       workers.clear();
       for (std::size_t t = 0; t < numThreads; ++t) {
         workers.emplace_back([&, t]() {
-          std::size_t start = t * chunkSize;
-          std::size_t end = std::min(start + chunkSize, numVertices);
+          std::size_t start = t * chunkSizeVertices;
+          std::size_t end = std::min(start + chunkSizeVertices, numVertices);
           func(t, static_cast<Vertex>(start), static_cast<Vertex>(end));
         });
       }
@@ -68,12 +69,15 @@ struct PSL {
       }
     });
 
-    // we add all edges, and at this point it could be that there are duplicate
-    // entries.
-    graphs[FWD]->doForAllEdges([&](Vertex from, Vertex to) {
-      bool upwardEdge = (rank[from] < rank[to]);
-      const DIRECTION dir = upwardEdge ? BWD : FWD;
-      labels[dir][upwardEdge ? to : from].add(upwardEdge ? from : to, 1);
+    // This can add duplicate entries, which will be removed afterwards.
+    processVertices([&](std::size_t /* threadId */, Vertex start, Vertex end) {
+      for (Vertex u = start; u < end; ++u) {
+        graphs[FWD]->relaxAllEdges(u, [&](Vertex from, Vertex to) {
+          bool upwardEdge = (rank[from] < rank[to]);
+          const DIRECTION dir = upwardEdge ? BWD : FWD;
+          labels[dir][upwardEdge ? to : from].add(upwardEdge ? from : to, 1);
+        });
+      }
     });
 
     // the possible duplicate entries are remove here.
