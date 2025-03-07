@@ -6,11 +6,11 @@
 #include <vector>
 
 template <typename T>
-class BitVectorStorage {
+class LookupStorage {
   static_assert(std::is_integral_v<T>, "T must be an integral type");
 
  public:
-  explicit BitVectorStorage(std::size_t size)
+  explicit LookupStorage(std::size_t size)
       : timestamps_(size, 0), storage_(), size_(size), current_generation_(1) {}
 
   void mark(T index) {

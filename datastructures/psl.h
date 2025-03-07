@@ -4,12 +4,13 @@
 #include <atomic>
 #include <iostream>
 #include <thread>
+#include <unordered_map>
 #include <vector>
 
 #include "../external/status_log.h"
-#include "bitvector_storage.h"
 #include "graph.h"
 #include "hub_labels.h"
+#include "lookup_storage.h"
 #include "types.h"
 #include "utils.h"
 
@@ -26,6 +27,8 @@ struct PSL {
         labels{std::vector<Label>(fwdGraph->numVertices()),
                std::vector<Label>(fwdGraph->numVertices())},
         numThreads(numThreads) {}
+
+  void showStats() const { showLabelStats(labels); }
 
   void printLabels() const {
     for (Vertex v = 0; v < graphs[FWD]->numVertices(); ++v) {
@@ -50,87 +53,89 @@ struct PSL {
         workers.emplace_back([&, t]() {
           std::size_t start = t * chunkSize;
           std::size_t end = std::min(start + chunkSize, numVertices);
-          func(t, start, end);
+          func(t, static_cast<Vertex>(start), static_cast<Vertex>(end));
         });
       }
       for (auto& thread : workers) thread.join();
     };
 
-    auto doForAllEdges = [&](DIRECTION dir, Vertex from, auto func) {
-      for (std::size_t i = graphs[dir]->beginEdge(from);
-           i < graphs[dir]->endEdge(from); ++i) {
-        func(from, graphs[dir]->toVertex[i]);
-      }
-    };
-
-    processVertices(
-        [&](std::size_t /* threadId */, std::size_t start, std::size_t end) {
-          for (Vertex u = static_cast<Vertex>(start);
-               u < static_cast<Vertex>(end); ++u) {
-            labels[FWD][u].clear();
-            labels[BWD][u].clear();
-            labels[FWD][u].add(u, 0);
-            labels[BWD][u].add(u, 0);
-          }
-        });
-
-    graphs[FWD]->doForAllEdges([&](Vertex from, Vertex to) {
-      if (rank[from] < rank[to]) {
-        if (!labels[BWD][to].contains(from)) [[likely]]
-          labels[BWD][to].add(from, 1);
-      } else {
-        if (!labels[FWD][from].contains(to)) [[likely]]
-          labels[FWD][from].add(to, 1);
+    processVertices([&](std::size_t /* threadId */, Vertex start, Vertex end) {
+      for (Vertex u = start; u < end; ++u) {
+        labels[FWD][u].clear();
+        labels[BWD][u].clear();
+        labels[FWD][u].add(u, 0);
+        labels[BWD][u].add(u, 0);
       }
     });
 
-    processVertices(
-        [&](std::size_t /* threadId */, std::size_t start, std::size_t end) {
-          for (Vertex u = static_cast<Vertex>(start);
-               u < static_cast<Vertex>(end); ++u) {
-            labels[FWD][u].sort();
-            labels[BWD][u].sort();
-          }
-        });
+    // we add all edges, and at this point it could be that there are duplicate
+    // entries.
+    graphs[FWD]->doForAllEdges([&](Vertex from, Vertex to) {
+      bool upwardEdge = (rank[from] < rank[to]);
+      const DIRECTION dir = upwardEdge ? BWD : FWD;
+      labels[dir][upwardEdge ? to : from].add(upwardEdge ? from : to, 1);
+    });
+
+    // the possible duplicate entries are remove here.
+    processVertices([&](std::size_t /* threadId */, Vertex start, Vertex end) {
+      for (Vertex u = start; u < end; ++u) {
+        labels[FWD][u].sort();
+        labels[FWD][u].removeDuplicateHubs();
+
+        labels[BWD][u].sort();
+        labels[BWD][u].removeDuplicateHubs();
+      }
+    });
 
     Distance d = 2;
-    std::atomic<bool> startNewRound = true;
+    std::atomic<bool> exploreNewRound = true;
 
-    std::vector<BitVectorStorage<Vertex>> candidates(
-        numThreads, BitVectorStorage<Vertex>(numVertices));
+    std::vector<LookupStorage<Vertex>> candidates(
+        numThreads, LookupStorage<Vertex>(numVertices));
 
     auto processDirection = [&](DIRECTION dir, const std::size_t threadId,
                                 const Vertex start, const Vertex end) {
       for (Vertex u = start; u < end; ++u) {
         candidates[threadId].clear();
-        doForAllEdges(dir, u, [&](Vertex /* from */, Vertex to) {
+        graphs[dir]->relaxAllEdges(u, [&](Vertex /* from */, Vertex to) {
           labels[dir][to].doForAll([&](Vertex w, Distance dist) {
             if (dist == d - 1) candidates[threadId].add(w);
           });
         });
 
         Label lookup(labels[dir][u]);
+
         for (Vertex w : candidates[threadId].getStorage()) {
           if (rank[u] <= rank[w] || sub_query(labels[!dir][w], lookup, d) <= d)
             continue;
           labels[dir][u].add(w, d);
-          startNewRound.store(true, std::memory_order_relaxed);
+          exploreNewRound.store(true, std::memory_order_relaxed);
         }
+
+        // we keep all labels sorted as to allow for faster
         labels[dir][u].sort();
       }
     };
 
-    while (startNewRound) {
-      startNewRound.store(false, std::memory_order_relaxed);
+    // the main algorithm. each iteration of this while loop finds new hubs with
+    // one more distance than in the previous round
+    while (exploreNewRound) {
+      exploreNewRound.store(false, std::memory_order_relaxed);
 
-      processVertices(
-          [&](std::size_t threadId, std::size_t start, std::size_t end) {
-            processDirection(FWD, threadId, static_cast<Vertex>(start),
-                             static_cast<Vertex>(end));
-            processDirection(BWD, threadId, static_cast<Vertex>(start),
-                             static_cast<Vertex>(end));
-          });
+      processVertices([&](std::size_t threadId, Vertex start, Vertex end) {
+        processDirection(FWD, threadId, start, end);
+        processDirection(BWD, threadId, start, end);
+      });
       d += 1;
     }
+
+    // processVertices([&](std::size_t /* threadId */, std::size_t start,
+    // std::size_t end) {
+    //   for (Vertex u = static_cast<Vertex>(start); u <
+    //   static_cast<Vertex>(end); ++u) {
+    //         labels[FWD][u].sort();
+    //         labels[BWD][u].sort();
+    //       }
+    // });
   }
 };

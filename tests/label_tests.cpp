@@ -98,6 +98,43 @@ TEST(LabelTest, DoForAll) {
   EXPECT_EQ(sumDists, 30);
 }
 
+TEST(LabelTest, RemoveDuplicateHubsWithDuplicates) {
+  Label label;
+  label.add(2, 10);
+  label.add(2, 5);
+  label.add(3, 7);
+  label.add(2, 8);
+  label.add(3, 6);
+  label.add(4, 9);
+
+  label.sort();
+
+  label.removeDuplicateHubs();
+
+  ASSERT_EQ(label.size(), 3u);
+  EXPECT_EQ(label.getHub(0), 2);
+  EXPECT_EQ(label.getDist(0), 5);
+  EXPECT_EQ(label.getHub(1), 3);
+  EXPECT_EQ(label.getDist(1), 6);
+  EXPECT_EQ(label.getHub(2), 4);
+  EXPECT_EQ(label.getDist(2), 9);
+}
+
+TEST(LabelTest, RemoveDuplicateHubsNoDuplicates) {
+  Label label;
+  label.add(1, 10);
+  label.add(2, 20);
+
+  label.sort();
+  label.removeDuplicateHubs();
+
+  ASSERT_EQ(label.size(), 2u);
+  EXPECT_EQ(label.getHub(0), 1);
+  EXPECT_EQ(label.getDist(0), 10);
+  EXPECT_EQ(label.getHub(1), 2);
+  EXPECT_EQ(label.getDist(1), 20);
+}
+
 TEST(LabelQueryTest, SubQuery) {
   Label left, right;
   left.add(1, 5);

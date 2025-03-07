@@ -13,6 +13,8 @@ void configure_parser(cli::Parser &parser) {
       "t", "number_threads",
       static_cast<std::size_t>(std::thread::hardware_concurrency()),
       "Number of threads to use.");
+  parser.set_optional<std::string>("o", "output_file", "",
+                                   "Output file to save hub labels into.");
 };
 
 int main(int argc, char *argv[]) {
@@ -22,6 +24,7 @@ int main(int argc, char *argv[]) {
 
   const std::string inputFileName = parser.get<std::string>("i");
   const std::size_t numberOfThreads = parser.get<std::size_t>("t");
+  const std::string outputFileName = parser.get<std::string>("o");
 
   Graph g;
   g.readDimacs(inputFileName);
@@ -59,6 +62,10 @@ int main(int argc, char *argv[]) {
 
   PSL psl(&g, &bwdGraph, rank, numberOfThreads);
   psl.run();
+  psl.showStats();
 
-  psl.printLabels();
+  if (!outputFileName.empty()) saveToFile(psl.labels, outputFileName);
+  // psl.printLabels();
+
+  // benchmark_hublabels(psl.labels, 1000);
 }

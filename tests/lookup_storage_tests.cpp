@@ -1,24 +1,24 @@
 #include <gtest/gtest.h>
 
-#include "../datastructures/bitvector_storage.h"
+#include "../datastructures/lookup_storage.h"
 
-TEST(BitVectorStorageTest, DefaultConstructor) {
-  BitVectorStorage<int> storage(100);
+TEST(LookupStorageTest, DefaultConstructor) {
+  LookupStorage<int> storage(100);
   EXPECT_EQ(storage.size(), 0);
   EXPECT_FALSE(storage.isMarked(0));
   EXPECT_FALSE(storage.isMarked(99));
 }
 
-TEST(BitVectorStorageTest, MarkingAndChecking) {
-  BitVectorStorage<int> storage(10);
+TEST(LookupStorageTest, MarkingAndChecking) {
+  LookupStorage<int> storage(10);
   EXPECT_FALSE(storage.isMarked(3));
   storage.mark(3);
   EXPECT_TRUE(storage.isMarked(3));
   EXPECT_FALSE(storage.isMarked(5));
 }
 
-TEST(BitVectorStorageTest, AddAndRetrieveElements) {
-  BitVectorStorage<int> storage(10);
+TEST(LookupStorageTest, AddAndRetrieveElements) {
+  LookupStorage<int> storage(10);
   storage.add(3);
   storage.add(5);
 
@@ -32,8 +32,8 @@ TEST(BitVectorStorageTest, AddAndRetrieveElements) {
   EXPECT_EQ(values[1], 5);
 }
 
-TEST(BitVectorStorageTest, ClearStorage) {
-  BitVectorStorage<int> storage(10);
+TEST(LookupStorageTest, ClearStorage) {
+  LookupStorage<int> storage(10);
   storage.add(2);
   storage.add(4);
   EXPECT_EQ(storage.size(), 2);
@@ -45,8 +45,8 @@ TEST(BitVectorStorageTest, ClearStorage) {
   EXPECT_TRUE(storage.getStorage().empty());
 }
 
-TEST(BitVectorStorageTest, MultipleMarks) {
-  BitVectorStorage<int> storage(10);
+TEST(LookupStorageTest, MultipleMarks) {
+  LookupStorage<int> storage(10);
   storage.mark(1);
   storage.mark(2);
   storage.mark(1);

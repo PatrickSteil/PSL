@@ -72,6 +72,13 @@ struct Graph {
     }
   }
 
+  template <typename FUNC>
+  void relaxAllEdges(const Vertex from, FUNC &&function) const {
+    for (std::size_t i = beginEdge(from); i < endEdge(from); ++i) {
+      function(from, toVertex[i]);
+    }
+  }
+
   std::size_t degree(const Vertex v) const {
     assert(isValid(v));
     return endEdge(v) - beginEdge(v);
