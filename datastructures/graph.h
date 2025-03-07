@@ -221,68 +221,6 @@ struct Graph {
     }
   }
 
-  void readMetis(const std::string &fileName) {
-    StatusLog log("Reading graph from metis");
-    std::ifstream inputFile(fileName);
-    if (!inputFile.is_open()) {
-      throw std::runtime_error("Failed to open file: " + fileName);
-    }
-
-    clear();
-
-    std::string line;
-
-    if (!std::getline(inputFile, line)) {
-      throw std::runtime_error("Invalid METIS file format: missing header");
-    }
-
-    std::istringstream headerStream(line);
-    std::size_t numVertices, numEdges;
-    if (!(headerStream >> numVertices >> numEdges)) {
-      throw std::runtime_error("Invalid METIS file format: invalid header");
-    }
-
-    adjArray.assign(numVertices + 1, 0);
-    std::vector<std::vector<Vertex>> adjacencyLists(numVertices);
-
-    Vertex vertexId = 0;
-    while (std::getline(inputFile, line)) {
-      if (line.empty()) {
-        continue;
-      }
-
-      std::istringstream lineStream(line);
-      Vertex neighbor;
-      while (lineStream >> neighbor) {
-        if (neighbor < 1 || neighbor > numVertices) {
-          throw std::runtime_error(
-              "Invalid METIS file format: vertex index out of range");
-        }
-        adjacencyLists[vertexId].push_back(neighbor - 1);
-      }
-      ++vertexId;
-    }
-
-    if (vertexId != numVertices) {
-      throw std::runtime_error(
-          "Invalid METIS file format: vertex count mismatch");
-    }
-
-    std::size_t edgeIndex = 0;
-    for (std::size_t v = 0; v < numVertices; ++v) {
-      adjArray[v] = edgeIndex;
-      toVertex.insert(toVertex.end(), adjacencyLists[v].begin(),
-                      adjacencyLists[v].end());
-      edgeIndex += adjacencyLists[v].size();
-    }
-    adjArray[numVertices] = edgeIndex;
-
-    if (toVertex.size() != 2 * numEdges) {
-      throw std::runtime_error(
-          "Invalid METIS file format: edge count mismatch");
-    }
-  }
-
   void readSnap(const std::string &fileName) {
     StatusLog log("Reading graph from .snap format");
     clear();
@@ -429,28 +367,5 @@ struct Graph {
 
     toVertex = std::move(newToVertex);
     adjArray = std::move(newAdjArray);
-  }
-};
-
-struct Tree {
-  std::vector<Vertex> parent;
-
-  Tree(const std::size_t numVertices = 0) : parent(numVertices, noVertex) {};
-  Tree(const Tree &) = default;
-  Tree(Tree &&) = default;
-
-  void resize(const std::size_t numVertices) {
-    parent.assign(numVertices, noVertex);
-  }
-
-  bool isValid(const Vertex v) const {
-    return v < parent.size() && v != noVertex;
-  };
-
-  void setParent(const Vertex v, const Vertex par) {
-    assert(isValid(v));
-    assert(isValid(par));
-
-    parent[v] = par;
   }
 };
