@@ -5,6 +5,7 @@
 #include "datastructures/graph.h"
 #include "datastructures/hub_labels.h"
 #include "datastructures/psl.h"
+#include "datastructures/psl_plus.h"
 #include "external/cmdparser.hpp"
 
 void configure_parser(cli::Parser &parser) {
@@ -19,6 +20,11 @@ void configure_parser(cli::Parser &parser) {
   parser.set_optional<bool>(
       "s", "show_stats", false,
       "Show statistics about the graph, as well as the computed hub labels.");
+  parser.set_optional<bool>(
+      "p", "PSL+", false,
+      "Removes equivalence vertices V1 and V2. This is the PSL+. If an output "
+      "file is passed as argument, the mapping function f(v) will be exported "
+      "as well.");
 };
 
 int main(int argc, char *argv[]) {
@@ -33,11 +39,11 @@ int main(int argc, char *argv[]) {
   const std::size_t numberOfThreads = parser.get<std::size_t>("t");
   const std::string outputFileName = parser.get<std::string>("o");
   const bool printStats = parser.get<bool>("s");
+  const bool pslPlus = parser.get<bool>("p");
 
   Graph g;
+  // g.readFromEdgeList(inputFileName);
   g.readDimacs(inputFileName);
-
-  Graph bwdGraph = g.reverseGraph();
 
   if (printStats) g.showStats();
 
@@ -51,23 +57,37 @@ int main(int argc, char *argv[]) {
   std::mt19937 randomGenerator(42);
   std::shuffle(randomNumber.begin(), randomNumber.end(), randomGenerator);
 
+  std::vector<std::size_t> degree(g.numVertices(), 0);
+  g.doForAllEdges([&](const Vertex from, const Vertex to) {
+    degree[from]++;
+    degree[to]++;
+  });
+
   std::sort(rank.begin(), rank.end(),
             [&](const std::size_t left, const std::size_t right) {
-              return std::forward_as_tuple(
-                         g.degree(static_cast<Vertex>(left)) +
-                             bwdGraph.degree(static_cast<Vertex>(left)),
-                         randomNumber[left]) >
-                     std::forward_as_tuple(
-                         g.degree(static_cast<Vertex>(right)) +
-                             bwdGraph.degree(static_cast<Vertex>(right)),
-                         randomNumber[right]);
+              return std::forward_as_tuple(degree[left], randomNumber[left]) >
+                     std::forward_as_tuple(degree[right], randomNumber[right]);
             });
 
-  PSL psl(&g, &bwdGraph, rank, numberOfThreads);
+  g.reorderByRank(rank);
+
+  std::vector<Vertex> f;
+
+  if (pslPlus) {
+    auto [partition, mapping] = computePartitionAndF(g, numberOfThreads);
+
+    g.removeVertices(partition, mapping);
+    f = mapping;
+
+    if (printStats) g.showStats();
+  }
+
+  Graph bwdGraph = g.reverseGraph();
+
+  PSL psl(&g, &bwdGraph, numberOfThreads);
   psl.run();
 
   if (printStats) psl.showStats();
 
-  if (!outputFileName.empty()) saveToFile(psl.labels, outputFileName);
-  // psl.printLabels();
+  if (!outputFileName.empty()) saveToFile(psl.labels, f, outputFileName);
 }

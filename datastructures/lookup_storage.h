@@ -14,12 +14,12 @@ class LookupStorage {
       : timestamps_(size, 0), storage_(), size_(size), current_generation_(1) {}
 
   void mark(T index) {
-    assert(index < size_);
+    assert(static_cast<std::size_t>(index) < size_);
     timestamps_[index] = current_generation_;
   }
 
   bool isMarked(T index) const {
-    assert(index < size_);
+    assert(static_cast<std::size_t>(index) < size_);
     return timestamps_[index] == current_generation_;
   }
 

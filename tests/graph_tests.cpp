@@ -98,3 +98,39 @@ TEST_F(GraphTest, ReverseGraph) {
   EXPECT_EQ(reversed.beginEdge(3), 4);
   EXPECT_EQ(reversed.endEdge(3), 5);
 }
+
+TEST_F(GraphTest, ReorderGraph) {
+  Graph graph;
+  graph.readFromEdgeList("test_edge_list.txt");
+
+  std::size_t oldNumVertices = graph.numVertices();
+  std::size_t oldNumEdges = graph.numEdges();
+
+  std::vector<std::size_t> rank(graph.numVertices(), 0);
+  rank[0] = 2;
+  rank[1] = 1;
+  rank[2] = 0;
+  rank[3] = 3;
+
+  graph.reorderByRank(rank);
+
+  EXPECT_EQ(graph.numVertices(), oldNumVertices);
+  EXPECT_EQ(graph.numEdges(), oldNumEdges);
+
+  EXPECT_EQ(graph.degree(0), 1);
+  EXPECT_EQ(graph.degree(1), 1);
+  EXPECT_EQ(graph.degree(2), 2);
+  EXPECT_EQ(graph.degree(3), 1);
+
+  EXPECT_EQ(graph.beginEdge(0), 0);
+  EXPECT_EQ(graph.endEdge(0), 1);
+
+  EXPECT_EQ(graph.beginEdge(1), 1);
+  EXPECT_EQ(graph.endEdge(1), 2);
+
+  EXPECT_EQ(graph.beginEdge(2), 2);
+  EXPECT_EQ(graph.endEdge(2), 4);
+
+  EXPECT_EQ(graph.beginEdge(3), 4);
+  EXPECT_EQ(graph.endEdge(3), 5);
+}

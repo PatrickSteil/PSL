@@ -280,6 +280,53 @@ struct Graph {
     }
   }
 
+  bool rankIsPermutation(const std::vector<std::size_t> &rank) {
+    const std::size_t n = rank.size();
+    std::vector<bool> seen(n, false);
+    for (std::size_t i = 0; i < n; ++i) {
+      const std::size_t r = rank[i];
+
+      if (!(r < n && !seen[r])) return false;
+      seen[r] = true;
+    }
+
+    return std::all_of(seen.begin(), seen.end(), [](bool val) { return val; });
+    ;
+  }
+
+  void reorderByRank(const std::vector<std::size_t> &rank) {
+    assert(rankIsPermutation(rank));
+    assert(rank.size() == numVertices());
+
+    std::vector<std::size_t> newAdjArray(numVertices() + 1, 0);
+    std::vector<Vertex> newToVertex(numEdges(), 0);
+
+    for (std::size_t v = 0; v < numVertices(); ++v) {
+      newAdjArray[rank[v] + 1] += degree(v);
+    }
+
+    for (std::size_t v = 0; v < numVertices(); ++v) {
+      newAdjArray[v + 1] += newAdjArray[v];
+    }
+
+    std::vector<std::size_t> placedEdges(numVertices(), 0);
+
+    for (std::size_t v = 0; v < numVertices(); ++v) {
+      relaxAllEdges(v, [&](const Vertex /* from */, const Vertex to) {
+        newToVertex[newAdjArray[rank[v]] + placedEdges[rank[v]]] = rank[to];
+        placedEdges[rank[v]]++;
+      });
+    }
+
+    for (std::size_t v = 0; v < numVertices(); ++v) {
+      std::sort(newToVertex.begin() + newAdjArray[v],
+                newToVertex.begin() + newAdjArray[v + 1]);
+    }
+
+    adjArray = std::move(newAdjArray);
+    toVertex = std::move(newToVertex);
+  }
+
   Graph reverseGraph() const {
     StatusLog log("Reversing Graph");
 
@@ -367,5 +414,52 @@ struct Graph {
 
     toVertex = std::move(newToVertex);
     adjArray = std::move(newAdjArray);
+  }
+
+  void removeVertices(const std::vector<std::uint8_t> &partition,
+                      const std::vector<Vertex> &representation) {
+    assert(partition.size() == numVertices());
+    assert(representation.size() == numVertices());
+
+    auto keepVertex = [&](const Vertex v) -> bool {
+      return (partition[v] == 3 || representation[v] == v);
+    };
+
+    const std::size_t oldNumVertices = numVertices();
+
+    std::vector<Vertex> oldToNew(oldNumVertices, static_cast<Vertex>(-1));
+    std::size_t newNumVertices = 0;
+    for (Vertex u = 0; u < oldNumVertices; ++u) {
+      if (keepVertex(u)) oldToNew[u] = newNumVertices++;
+    }
+
+    std::vector<std::size_t> newAdjArray(newNumVertices + 1, 0);
+    std::size_t newNumEdges = 0;
+
+    for (Vertex u = 0; u < oldNumVertices; ++u) {
+      if (!keepVertex(u)) continue;
+      newAdjArray[oldToNew[u]] = newNumEdges;
+      for (std::size_t j = beginEdge(u); j < endEdge(u); ++j) {
+        Vertex w = toVertex[j];
+        if (keepVertex(w)) ++newNumEdges;
+      }
+    }
+    newAdjArray[newNumVertices] = newNumEdges;
+
+    std::vector<Vertex> newToVertex(newNumEdges, 0);
+    std::size_t edgeIndex = 0;
+    for (Vertex u = 0; u < oldNumVertices; ++u) {
+      if (!keepVertex(u)) continue;
+      for (std::size_t j = beginEdge(u); j < endEdge(u); ++j) {
+        Vertex w = toVertex[j];
+        if (keepVertex(w)) {
+          newToVertex[edgeIndex++] = oldToNew[w];
+        }
+      }
+    }
+    assert(edgeIndex == newNumEdges);
+
+    adjArray = std::move(newAdjArray);
+    toVertex = std::move(newToVertex);
   }
 };

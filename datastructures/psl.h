@@ -15,15 +15,12 @@
 #include "utils.h"
 
 struct PSL {
-  const std::vector<std::size_t>& rank;
   std::array<const Graph*, 2> graphs;
   std::array<std::vector<Label>, 2> labels;
   std::size_t numThreads;
 
-  PSL(const Graph* fwdGraph, const Graph* bwdGraph,
-      const std::vector<std::size_t>& rank, std::size_t numThreads = 1)
-      : rank(rank),
-        graphs{fwdGraph, bwdGraph},
+  PSL(const Graph* fwdGraph, const Graph* bwdGraph, std::size_t numThreads = 1)
+      : graphs{fwdGraph, bwdGraph},
         labels{std::vector<Label>(fwdGraph->numVertices()),
                std::vector<Label>(fwdGraph->numVertices())},
         numThreads(numThreads) {}
@@ -73,7 +70,7 @@ struct PSL {
     processVertices([&](std::size_t /* threadId */, Vertex start, Vertex end) {
       for (Vertex u = start; u < end; ++u) {
         graphs[FWD]->relaxAllEdges(u, [&](Vertex from, Vertex to) {
-          bool upwardEdge = (rank[from] < rank[to]);
+          bool upwardEdge = (from < to);
           const DIRECTION dir = upwardEdge ? BWD : FWD;
           labels[dir][upwardEdge ? to : from].add(upwardEdge ? from : to, 1);
         });
@@ -88,6 +85,11 @@ struct PSL {
 
         labels[BWD][u].sort();
         labels[BWD][u].removeDuplicateHubs();
+
+        assert(std::is_sorted(labels[FWD][u].hubs.begin(),
+                              labels[FWD][u].hubs.end()));
+        assert(std::is_sorted(labels[BWD][u].hubs.begin(),
+                              labels[BWD][u].hubs.end()));
       }
     });
 
@@ -110,8 +112,7 @@ struct PSL {
         Label lookup(labels[dir][u]);
 
         for (Vertex w : candidates[threadId].getStorage()) {
-          if (rank[u] <= rank[w] || sub_query(labels[!dir][w], lookup, d) <= d)
-            continue;
+          if (u <= w || sub_query(labels[!dir][w], lookup, d) <= d) continue;
           labels[dir][u].add(w, d);
           exploreNewRound.store(true, std::memory_order_relaxed);
         }
@@ -132,14 +133,5 @@ struct PSL {
       });
       d += 1;
     }
-
-    // processVertices([&](std::size_t /* threadId */, std::size_t start,
-    // std::size_t end) {
-    //   for (Vertex u = static_cast<Vertex>(start); u <
-    //   static_cast<Vertex>(end); ++u) {
-    //         labels[FWD][u].sort();
-    //         labels[BWD][u].sort();
-    //       }
-    // });
   }
 };
