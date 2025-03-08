@@ -379,7 +379,7 @@ Distance sub_query(const Label& left, const Label& right, Distance cutoff) {
 }
 
 void saveToFile(const std::array<std::vector<Label>, 2>& labels,
-                const std::vector<Vertex>& f, const std::string& fileName) {
+                const std::vector<Vertex>& f, const std::vector<std::uint8_t>& partition, const std::string& fileName) {
   StatusLog log("Save to file");
   std::ofstream outFile(fileName);
 
@@ -407,8 +407,9 @@ void saveToFile(const std::array<std::vector<Label>, 2>& labels,
   }
 
   if (!f.empty()) {
+    assert(f.size() == partition.size());
     for (std::size_t i = 0; i < f.size(); ++i) {
-      outFile << "f " << i << " " << f[i] << "\n";
+      outFile << "f " << i << " " << (int) partition[i] << " " << f[i] << "\n";
     }
   }
 

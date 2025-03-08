@@ -73,12 +73,14 @@ int main(int argc, char *argv[]) {
   g.reorderByRank(rank);
 
   std::vector<Vertex> f;
+  std::vector<std::uint8_t> p;
 
   if (pslPlus) {
     auto [partition, mapping] = computePartitionAndF(g, numberOfThreads);
 
     g.removeVertices(partition, mapping);
     f = mapping;
+    p = partition;
 
     if (printStats) g.showStats();
   }
@@ -90,5 +92,5 @@ int main(int argc, char *argv[]) {
 
   if (printStats) psl.showStats();
 
-  if (!outputFileName.empty()) saveToFile(psl.labels, f, outputFileName);
+  if (!outputFileName.empty()) saveToFile(psl.labels, f, p, outputFileName);
 }

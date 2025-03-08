@@ -62,7 +62,7 @@ o 11 0 2 2 2 3 1 4 1 11 0
 i 11 0 2 2 2 3 1 4 1 11 0
 ```
 
-## PSL Plus
+## PSL +
 
 You can activate the PSL+ algorithm, which intern will reduce the graph by removing euqivalence relations (i.e., remove `redundant` vertices) and will output the vertex representation along with the hub labels.
 Here is the above example with PSL+:
@@ -89,19 +89,21 @@ o 8 0 1 5 1 7 1 8 0
 i 8 0 1 5 1 7 1 8 0
 o 9 0 2 1 1 2 2 3 1 9 0
 i 9 0 2 1 1 2 2 3 1 9 0
-f 0 0
-f 1 1
-f 2 2
-f 3 3
-f 4 4
-f 5 5
-f 6 6
-f 7 7
-f 8 8
-f 9 6
-f 10 10
-f 11 10
+f 0 3 0
+f 1 3 1
+f 2 3 2
+f 3 3 3
+f 4 3 4
+f 5 3 5
+f 6 2 6
+f 7 3 7
+f 8 3 8
+f 9 2 6
+f 10 1 10
+f 11 1 10
 ```
+
+Each `f` line maps the partition ID (V1, V2 or V3) and the correspoding `f(v)` for each vertex.
 
 ## Sources
 [1] https://dl.acm.org/doi/10.1145/3299869.3319877
