@@ -8,10 +8,8 @@
 #include "graph.h"
 #include "types.h"
 
-// We want to produce:
-//   partition[u] = 1, 2, or 3  (meaning V1, V2, or V3)
-//   f[u] = representative for that equivalence class
-// Return them as a pair of vectors.
+// This method compute the partitions V1, V2 and V3 for each vertex, as well as
+// the representation for each vertex f(v)
 std::pair<std::vector<std::uint8_t>, std::vector<Vertex>> computePartitionAndF(
     const Graph &G, const std::size_t numThreads = 1) {
   StatusLog log("Reducing the graph");

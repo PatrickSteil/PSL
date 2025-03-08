@@ -28,10 +28,11 @@ void configure_parser(cli::Parser &parser) {
 };
 
 int main(int argc, char *argv[]) {
-  cli::Parser parser(argc, argv,
-                     "This code implements the PSL Hub Labeling algorithm for "
-                     "directed graphs. It can be run in parallel, or "
-                     "sequentially.\nPatrick Steil (2025)");
+  cli::Parser parser(
+      argc, argv,
+      "This code implements the PSL (Plus) Hub Labeling algorithm for "
+      "directed graphs. It can be run in parallel, or "
+      "sequentially.\nPatrick Steil (2025)");
   configure_parser(parser);
   parser.run_and_exit_if_error();
 
