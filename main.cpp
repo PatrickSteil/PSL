@@ -6,6 +6,7 @@
 #include "datastructures/hub_labels.h"
 #include "datastructures/psl.h"
 #include "datastructures/psl_plus.h"
+#include "datastructures/psl_star.h"
 #include "external/cmdparser.hpp"
 
 void configure_parser(cli::Parser &parser) {
@@ -25,6 +26,7 @@ void configure_parser(cli::Parser &parser) {
       "Removes equivalence vertices V1 and V2. This is the PSL+. If an output "
       "file is passed as argument, the mapping function f(v) will be exported "
       "as well.");
+  parser.set_optional<bool>("r", "PSL*", false, "Uses the PSL* algorithm.");
 };
 
 int main(int argc, char *argv[]) {
@@ -41,6 +43,7 @@ int main(int argc, char *argv[]) {
   const std::string outputFileName = parser.get<std::string>("o");
   const bool printStats = parser.get<bool>("s");
   const bool pslPlus = parser.get<bool>("p");
+  const bool pslStar = parser.get<bool>("r");
 
   Graph g;
   // g.readFromEdgeList(inputFileName);
@@ -73,12 +76,13 @@ int main(int argc, char *argv[]) {
   g.reorderByRank(rank);
 
   std::vector<Vertex> f;
+  std::vector<Vertex> oldToNew;
   std::vector<std::uint8_t> p;
 
   if (pslPlus) {
     auto [partition, mapping] = computePartitionAndF(g, numberOfThreads);
 
-    g.removeVertices(partition, mapping);
+    oldToNew = g.removeVertices(partition, mapping);
     f = mapping;
     p = partition;
 
@@ -87,10 +91,20 @@ int main(int argc, char *argv[]) {
 
   Graph bwdGraph = g.reverseGraph();
 
-  PSL psl(&g, &bwdGraph, numberOfThreads);
-  psl.run();
+  auto run = [&](auto &pslData) {
+    pslData.run();
 
-  if (printStats) psl.showStats();
+    if (printStats) pslData.showStats();
 
-  if (!outputFileName.empty()) saveToFile(psl.labels, f, p, outputFileName);
+    if (!outputFileName.empty())
+      saveToFile(pslData.labels, f, p, oldToNew, outputFileName);
+  };
+
+  if (pslStar) {
+    PSLStar psl(&g, &bwdGraph, numberOfThreads);
+    run(psl);
+  } else {
+    PSL psl(&g, &bwdGraph, numberOfThreads);
+    run(psl);
+  }
 }

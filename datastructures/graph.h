@@ -416,8 +416,9 @@ struct Graph {
     adjArray = std::move(newAdjArray);
   }
 
-  void removeVertices(const std::vector<std::uint8_t> &partition,
-                      const std::vector<Vertex> &representation) {
+  std::vector<Vertex> removeVertices(
+      const std::vector<std::uint8_t> &partition,
+      const std::vector<Vertex> &representation) {
     assert(partition.size() == numVertices());
     assert(representation.size() == numVertices());
 
@@ -461,5 +462,7 @@ struct Graph {
 
     adjArray = std::move(newAdjArray);
     toVertex = std::move(newToVertex);
+
+    return oldToNew;
   }
 };
