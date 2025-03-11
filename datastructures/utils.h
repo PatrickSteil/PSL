@@ -13,6 +13,13 @@
 #include <utility>
 #include <vector>
 
+template <typename T>
+void sortAndRemoveDuplicates(std::vector<T> &vec) {
+  std::sort(vec.begin(), vec.end());
+  auto newEnd = std::unique(vec.begin(), vec.end());
+  vec.erase(newEnd, vec.end());
+}
+
 template <typename T, typename Compare>
 std::vector<std::size_t> sort_permutation(const std::vector<T> &vec,
                                           const Compare &&compare) {

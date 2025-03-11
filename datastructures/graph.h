@@ -38,6 +38,8 @@ struct Graph {
   std::vector<Vertex> toVertex;
 
   Graph() : adjArray(1), toVertex() {};
+  Graph(std::size_t numVertices, std::size_t numEdges)
+      : adjArray(numVertices + 1, 0), toVertex(numEdges, 0) {};
 
   Graph(const Graph &other)
       : adjArray(other.adjArray), toVertex(other.toVertex) {};
@@ -111,8 +113,32 @@ struct Graph {
     toVertex.clear();
   }
 
+  void buildFromEdgeList(std::vector<std::pair<Vertex, Vertex>> &edgeList) {
+    Vertex maxVertex = 0;
+    for (const auto &edge : edgeList) {
+      maxVertex = std::max({maxVertex, edge.first, edge.second});
+    }
+
+    adjArray.resize(maxVertex + 2, 0);
+
+    sortAndRemoveDuplicates(edgeList);
+
+    for (const auto &[u, v] : edgeList) {
+      ++adjArray[u + 1];
+    }
+
+    for (std::size_t i = 1; i < adjArray.size(); ++i) {
+      adjArray[i] += adjArray[i - 1];
+    }
+
+    toVertex.resize(edgeList.size());
+    std::vector<std::size_t> offset = adjArray;
+    for (const auto &[u, v] : edgeList) {
+      toVertex[offset[u]++] = v;
+    }
+  }
+
   void readFromEdgeList(const std::string &fileName) {
-    StatusLog log("Reading graph from edgelist");
     clear();
 
     std::ifstream file(fileName);
@@ -121,43 +147,18 @@ struct Graph {
     }
 
     std::vector<std::pair<Vertex, Vertex>> edges;
-    Vertex maxVertex = 0;
-
+    Vertex u, v;
     std::string line;
     while (std::getline(file, line)) {
       std::istringstream iss(line);
-      Vertex u, v;
       if (!(iss >> u >> v)) {
         continue;
       }
-
       edges.emplace_back(u - 1, v - 1);
-      maxVertex = std::max({maxVertex, u - 1, v - 1});
     }
-
     file.close();
 
-    adjArray.resize(maxVertex + 2, 0);
-
-    std::sort(edges.begin(), edges.end(),
-              [](const auto &left, const auto &right) {
-                return std::tie(left.first, left.second) <
-                       std::tie(right.first, right.second);
-              });
-    for (const auto &[u, v] : edges) {
-      ++adjArray[u + 1];
-    }
-
-    for (std::size_t i = 1; i < adjArray.size(); ++i) {
-      adjArray[i] += adjArray[i - 1];
-    }
-
-    toVertex.resize(edges.size());
-    std::vector<std::size_t> offset = adjArray;
-
-    for (const auto &[u, v] : edges) {
-      toVertex[offset[u]++] = v;
-    }
+    buildFromEdgeList(edges);
   }
 
   void readDimacs(const std::string &fileName) {

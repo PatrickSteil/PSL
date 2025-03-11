@@ -19,6 +19,9 @@ set(CMAKE_CXX_FLAGS_DEBUG "-Werror -Wpedantic -pedantic-errors -Wall -Wextra -g 
 add_executable(PSL main.cpp)
 target_compile_options(PSL PRIVATE -pthread)
 
+add_executable(TT_PSL tt_main.cpp)
+target_compile_options(TT_PSL PRIVATE -pthread)
+
 enable_testing()
 
 find_package(GTest REQUIRED)
